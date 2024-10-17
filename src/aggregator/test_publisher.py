@@ -3,7 +3,7 @@ import time
 import json
 import random
 
-ipAddressMQTT = "192.168.0.118"
+ipAddressMQTT = "localhost" # Replace with your broker's IP
 portMQTT = 1900
 
 client = mqtt.Client()
