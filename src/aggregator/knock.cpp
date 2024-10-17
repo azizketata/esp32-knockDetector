@@ -14,7 +14,6 @@
 // Pin definitions
 const int knockSensorPin = 36;  // Piezo sensor connected to GPIO36 (ADC1_CH0)
 const int programSwitchPin = 21; // Programming mode switch connected to GPIO2
-const int motorPin = 4;         // Motor control connected to GPIO4
 const int redLedPin = 16;       // Red LED connected to GPIO16
 const int greenLedPin = 17;     // Green LED connected to GPIO17
 
@@ -31,7 +30,7 @@ const int knockTimeout = 1200;         // Maximum time to wait for a knock seque
 int secretCode[maxKnocks] = {50, 25, 25, 50, 100, 50}; // Initial knock pattern
 int knockTimes[maxKnocks];                             // Array to store knock intervals
 int sensorValue = 0;                                   // Last reading of the knock sensor
-bool isProgrammingMode = true;                        // Flag for programming mode
+bool isProgrammingMode = false;                        // Flag for programming mode
 
 // **Function prototypes**
 void listenToKnocks();
@@ -40,7 +39,6 @@ void triggerUnlock();
 
 void setup()
 {
-    pinMode(motorPin, OUTPUT);
     pinMode(redLedPin, OUTPUT);
     pinMode(greenLedPin, OUTPUT);
     pinMode(programSwitchPin, INPUT_PULLUP); // Use internal pull-up resistor
@@ -179,12 +177,9 @@ void triggerUnlock()
     // Example: Send an HTTP request to the Nuki Bridge or API
 
     // For demonstration, we'll simulate the motor activation
-    digitalWrite(motorPin, HIGH);
     digitalWrite(greenLedPin, HIGH);
 
     delay(lockTurnDuration); // Wait a bit
-
-    digitalWrite(motorPin, LOW); // Turn the motor off
 
     // Blink the green LED a few times for more visual feedback
     for (int i = 0; i < 5; i++)
