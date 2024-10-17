@@ -1,14 +1,13 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
-
+#include <ArduinoJson.h>
 /*
- * This program detects knock patterns and activates a motor to unlock a mechanism if the correct pattern is detected.
+ * This program detects knock patterns
  *
  * Hardware connections:
  * - GPIO36 (ADC1_CH0): Piezo sensor (connected to ground with a 1MΩ pulldown resistor)
  * - GPIO2: Programming switch to enter a new code (short this pin to enter programming mode)
- * - GPIO4: DC gear reduction motor connected to the locking mechanism
  * - GPIO16: Red LED indicator
  * - GPIO17: Green LED indicator
  */
@@ -38,7 +37,7 @@ const char* ssid = "Your_SSID";
 const char* password = "Your_Password";
 
 // MQTT Broker IP and Port
-IPAddress mqttBroker(192, 168, 0, 111); // Replace with your broker's IP
+IPAddress mqttBroker(192, 168, 0, 118); // Replace with your broker's IP
 const int mqttPort = 1900;
 
 // MQTT Client
@@ -48,7 +47,12 @@ PubSubClient client(espClient);
 // Sensor ID
 const char* sensorID = "knock_sensor_1";
 
-// **Function prototypes**
+// Function Prototypes
+void setupWiFi();
+void mqttCallback(char* topic, byte* payload, unsigned int length);
+void reconnectMQTT();
+void publishKnockSequence(int* knocks, int count);
+void publishValidationResult(bool success);
 void listenToKnocks();
 bool validateKnock();
 void triggerUnlock();
@@ -250,12 +254,9 @@ publishKnockSequence(knockTimes, knockCount);
 // Function to unlock the door: insert the code for the Nuki web API here.
 void triggerUnlock()
 {
+    // for now we just light the LED to signify the door being unlocked
     Serial.println("Door unlocked!");
-
-    // Insert Nuki API code here
-    // Example: Send an HTTP request to the Nuki Bridge or API
-
-    // For demonstration, we'll simulate the motor activation
+    
     digitalWrite(greenLedPin, HIGH);
 
 
@@ -356,38 +357,34 @@ bool validateKnock()
 
 // builds a JSON object containing a knock sequence, sensor ID, and timestamp, then publishes it to an MQTT topic.
 void publishKnockSequence(int* knocks, int count) {
-    // Create a JSON string of the knock sequence
-    // that will be sent later on
-    String knockSequence = "[";
+    StaticJsonDocument<256> doc;
+    doc["sensor_id"] = sensorID;
+    doc["timestamp"] = millis();
+
+    JsonArray knockSequence = doc.createNestedArray("knock_sequence");
     for (int i = 0; i < count; i++) {
-        knockSequence += String(knocks[i]);
-        if (i < count - 1) {
-            knockSequence += ",";
-        }
+        knockSequence.add(knocks[i]);
     }
-    knockSequence += "]";
 
-    // Create a JSON payload
-    String payload = "{";
-    payload += "\"sensor_id\":\"" + String(sensorID) + "\",";
-    payload += "\"timestamp\":" + String(millis()) + ",";
-    payload += "\"knock_sequence\":" + knockSequence;
-    payload += "}";
+    char payload[256];
+    serializeJson(doc, payload);
 
-    // Publish to MQTT topic
-    client.publish("knock/sensor/data", payload.c_str());
+    client.publish("knock/sensor/data", payload);
 }
 //creates a JSON-like string payload that contains a sensor ID, a timestamp, and a validation status
 // (either "success" or "failure"). It then publishes this payload to the MQTT topic knock/sensor/status
 void publishValidationResult(bool success) {
-    String payload = "{";
-    payload += "\"sensor_id\":\"" + String(sensorID) + "\",";
-    payload += "\"timestamp\":" + String(millis()) + ",";
-    payload += "\"validation\":\"" + String(success ? "success" : "failure") + "\"";
-    payload += "}";
+    StaticJsonDocument<128> doc;
+    doc["sensor_id"] = sensorID;
+    doc["timestamp"] = millis();
+    doc["validation"] = success ? "success" : "failure";
 
-    client.publish("knock/sensor/status", payload.c_str());
+    char payload[128];
+    serializeJson(doc, payload);
+
+    client.publish("knock/sensor/status", payload);
 }
+
 
 
 

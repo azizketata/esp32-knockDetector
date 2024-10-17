@@ -47,14 +47,7 @@ def get_all_knocks():
     response = make_response(jsonify(knockData), 200)
     return response
 
-@app.route('/knocks/<string:sensor_id>', methods=['GET'])
-def get_sensor_knock(sensor_id):
-    data = knockData.get(sensor_id)
-    if data:
-        response = make_response(jsonify(data), 200)
-    else:
-        response = make_response(jsonify({'error': 'Sensor not found'}), 404)
-    return response
+
 
 # Run Flask app
 if __name__ == '__main__':
