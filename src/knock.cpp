@@ -1,4 +1,6 @@
 #include <Arduino.h>
+#include <WiFi.h>
+#include <PubSubClient.h>
 
 /*
  * This program detects knock patterns and activates a motor to unlock a mechanism if the correct pattern is detected.
@@ -18,11 +20,10 @@ const int redLedPin = 16;       // Red LED connected to GPIO16
 const int greenLedPin = 17;     // Green LED connected to GPIO17
 
 // Configuration constants
-const int knockThreshold = 3;          // Minimum signal from the piezo to register as a knock
+const int knockThreshold = 25;          // Minimum signal from the piezo to register as a knock
 const int individualRejectMargin = 25; // Acceptable deviation percentage for individual knocks
 const int averageRejectMargin = 15;    // Acceptable average deviation percentage for the knock sequence
 const int knockFadeTime = 150;         // Milliseconds to allow a knock to fade
-const int lockTurnDuration = 650;      // Milliseconds to run the motor for a half turn
 const int maxKnocks = 20;              // Maximum number of knocks to listen for
 const int knockTimeout = 1200;         // Maximum time to wait for a knock sequence
 
@@ -31,6 +32,21 @@ int secretCode[maxKnocks] = {50, 25, 25, 50, 100, 50}; // Initial knock pattern
 int knockTimes[maxKnocks];                             // Array to store knock intervals
 int sensorValue = 0;                                   // Last reading of the knock sensor
 bool isProgrammingMode = false;                        // Flag for programming mode
+
+// WiFi credentials
+const char* ssid = "Your_SSID";
+const char* password = "Your_Password";
+
+// MQTT Broker IP and Port
+IPAddress mqttBroker(192, 168, 0, 111); // Replace with your broker's IP
+const int mqttPort = 1900;
+
+// MQTT Client
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+// Sensor ID
+const char* sensorID = "knock_sensor_1";
 
 // **Function prototypes**
 void listenToKnocks();
@@ -47,10 +63,23 @@ void setup()
     Serial.println("Program started.");
 
     digitalWrite(greenLedPin, HIGH); // Green LED on, system is ready
+
+    // Initialize WiFi
+    setupWiFi();
+
+    // Initialize MQTT
+    client.setServer(mqttBroker, mqttPort);
+    client.setCallback(mqttCallback);
 }
 
 void loop()
 {
+    if (!client.connected()) {
+        reconnectMQTT();
+    }
+    client.loop();
+
+
     // Read the knock sensor value
     sensorValue = analogRead(knockSensorPin);
 
@@ -72,6 +101,49 @@ void loop()
         listenToKnocks();
     }
 }
+///////////// wifi logic //////////////////////
+
+// Function to connect to WiFi
+void setupWiFi() {
+    delay(10);
+    Serial.println();
+    Serial.print("Connecting to ");
+    Serial.println(ssid);
+
+    WiFi.begin(ssid, password);
+
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+
+    Serial.println("WiFi connected");
+    Serial.println("IP address: ");
+    Serial.println(WiFi.localIP());
+}
+
+// MQTT callback (not used but required)
+void mqttCallback(char* topic, byte* payload, unsigned int length) {
+    // Handle messages received (if any)
+}
+
+void reconnectMQTT() {
+    // Loop until we're reconnected
+    while (!client.connected()) {
+        Serial.print("Attempting MQTT connection...");
+        // Attempt to connect
+        if (client.connect(sensorID)) {
+            Serial.println("connected");
+        } else {
+            Serial.print("failed, rc=");
+            Serial.print(client.state());
+            Serial.println(" try again in 5 seconds");
+            delay(5000);
+        }
+    }
+}
+
+///////////////// wifi logic ////////////////////////////
 
 // Function to record and process knock sequences
 void listenToKnocks()
@@ -97,7 +169,7 @@ void listenToKnocks()
     {
         digitalWrite(redLedPin, HIGH);
     }
-
+    // loop to register a new knock 
     do
     {
         // Listen for the next knock or wait for it to timeout
@@ -106,6 +178,7 @@ void listenToKnocks()
         { // Another knock detected
             // Record the delay time
             Serial.println("Knock detected.");
+            Serial.println(sensorValue);
             currentTime = millis();
             knockTimes[knockCount] = currentTime - startTime;
             knockCount++; // Increment the counter
@@ -133,12 +206,14 @@ void listenToKnocks()
     { // If we're not in programming mode
         if (validateKnock())
         {
+            publishValidationResult(true);
             triggerUnlock();
         }
         else
         {
+            publishValidationResult(false);
             Serial.println("Secret knock failed.");
-            digitalWrite(greenLedPin, LOW); // We didn't unlock, so blink the red LED as visual feedback
+            digitalWrite(greenLedPin, LOW); // We didn't unlock, blink the red LED as visual feedback
             for (int i = 0; i < 4; i++)
             {
                 digitalWrite(redLedPin, HIGH);
@@ -166,6 +241,10 @@ void listenToKnocks()
             digitalWrite(greenLedPin, HIGH);
         }
     }
+
+// After recording the knock sequence
+publishKnockSequence(knockTimes, knockCount);
+
 }
 
 // Function to unlock the door: insert the code for the Nuki web API here.
@@ -179,9 +258,9 @@ void triggerUnlock()
     // For demonstration, we'll simulate the motor activation
     digitalWrite(greenLedPin, HIGH);
 
-    delay(lockTurnDuration); // Wait a bit
 
     // Blink the green LED a few times for more visual feedback
+
     for (int i = 0; i < 5; i++)
     {
         digitalWrite(greenLedPin, LOW);
@@ -218,11 +297,14 @@ bool validateKnock()
     // If we're recording a new knock, save the info and exit
     if (isProgrammingMode)
     {
+        // normalize the times 
+        // maxinterval (upper limit) represents 100 
         for (int i = 0; i < maxKnocks; i++)
-        { // Normalize the times
+        { // Normalize the times 
             secretCode[i] = map(knockTimes[i], 0, maxInterval, 0, 100);
         }
         // Flash the lights in the recorded pattern to indicate it's been programmed
+        // visual feedback
         digitalWrite(greenLedPin, LOW);
         digitalWrite(redLedPin, LOW);
         delay(1000);
@@ -245,7 +327,7 @@ bool validateKnock()
         return false; // We don't unlock the door when we are recording a new knock
     }
 
-    // Check if the number of knocks matches
+    // Check if the number of knocks matches, otherwise already return false
     if (currentKnockCount != secretKnockCount)
     {
         return false;
@@ -271,6 +353,43 @@ bool validateKnock()
     }
     return true;
 }
+
+// builds a JSON object containing a knock sequence, sensor ID, and timestamp, then publishes it to an MQTT topic.
+void publishKnockSequence(int* knocks, int count) {
+    // Create a JSON string of the knock sequence
+    // that will be sent later on
+    String knockSequence = "[";
+    for (int i = 0; i < count; i++) {
+        knockSequence += String(knocks[i]);
+        if (i < count - 1) {
+            knockSequence += ",";
+        }
+    }
+    knockSequence += "]";
+
+    // Create a JSON payload
+    String payload = "{";
+    payload += "\"sensor_id\":\"" + String(sensorID) + "\",";
+    payload += "\"timestamp\":" + String(millis()) + ",";
+    payload += "\"knock_sequence\":" + knockSequence;
+    payload += "}";
+
+    // Publish to MQTT topic
+    client.publish("knock/sensor/data", payload.c_str());
+}
+//creates a JSON-like string payload that contains a sensor ID, a timestamp, and a validation status
+// (either "success" or "failure"). It then publishes this payload to the MQTT topic knock/sensor/status
+void publishValidationResult(bool success) {
+    String payload = "{";
+    payload += "\"sensor_id\":\"" + String(sensorID) + "\",";
+    payload += "\"timestamp\":" + String(millis()) + ",";
+    payload += "\"validation\":\"" + String(success ? "success" : "failure") + "\"";
+    payload += "}";
+
+    client.publish("knock/sensor/status", payload.c_str());
+}
+
+
 
 
 
