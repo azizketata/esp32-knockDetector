@@ -3,3 +3,12 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+# Ignore Python cache directories
+**/__pycache__/
+# Ignore compiled Python files
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore Python virtual environments
+**/venv/
