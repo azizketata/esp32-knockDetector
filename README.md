@@ -142,20 +142,20 @@ Knock on the sensor to test detection and pattern validation.
 
 ## Usage ( new addition coming soon)
 ### Programming a New Knock Pattern
-1.Enter Programming Mode: Press and hold the programming switch connected to GPIO21.
-2.Visual Indicator: The red LED will turn on, indicating programming mode.
-3.Record Knock Pattern: Knock the desired pattern on the sensor.
-4.Exit Programming Mode: Release the programming switch.
-5.Confirmation: LEDs will blink alternately to confirm the new pattern is stored.
+1.Enter Programming Mode: Press and hold the programming switch connected to GPIO21.  
+2.Visual Indicator: The red LED will turn on, indicating programming mode.  
+3.Record Knock Pattern: Knock the desired pattern on the sensor.  
+4.Exit Programming Mode: Release the programming switch.  
+5.Confirmation: LEDs will blink alternately to confirm the new pattern is stored.  
 ### Validating a Knock Pattern
-1.Ensure Normal Mode: Make sure the programming switch is not pressed.
-2.Perform Knock Pattern: Knock the stored pattern on the sensor.
-3.Feedback:
+1.Ensure Normal Mode: Make sure the programming switch is not pressed.  
+2.Perform Knock Pattern: Knock the stored pattern on the sensor.  
+3.Feedback:  
     Success: Green LED blinks; validation result is sent over MQTT.
     Failure: Red LED blinks; validation failure is sent over MQTT.
-4.Trigger Actions: Upon successful validation, actions like unlocking a door can be triggered.
+4.Trigger Actions: Upon successful validation, actions like unlocking a door can be triggered.  
 ## Testing
-A test publisher script test_publisher.py is provided to simulate sensor data being sent to the MQTT broker. This can be used to test the aggregator and REST API without the physical hardware.
+A test publisher script test_publisher.py is provided to simulate sensor data being sent to the MQTT broker. This can be used to test the aggregator and REST API without the physical hardware.  
 
 
-Note: Ensure all IP addresses, ports, and configuration settings are updated to match your specific environment before deploying the system.
+Note: Ensure all IP addresses, ports, and configuration settings are updated to match your specific environment before deploying the system.  
