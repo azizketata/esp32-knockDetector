@@ -2,9 +2,9 @@
 ## Demo
 
 ## Description
-Knock pattern detection offers an intuitive and interactive way to control devices or authenticate users. This project utilizes an ESP32 microcontroller connected to a piezoelectric sensor to detect specific knock sequences. Users can program custom knock patterns, which can trigger actions like unlocking a door or activating devices.  
+Users can program custom knock patterns, which can trigger actions like unlocking a door or activating devices.  
 
-The detected knock sequences are sent via MQTT to a broker (Mosquitto). An aggregator, written in Python using the Paho MQTT client and Flask, collects this data and exposes it through a RESTful API. This allows for seamless integration with other systems and applications that can consume the knock data and validation results.  
+The detected knock sequences are sent via MQTT to a broker (Mosquitto). An aggregator, written in Python using the Paho MQTT client and Flask, collects this data and exposes it through a RESTful API. This allows for integration with other systems and applications that can consume the knock data and validation results.For example to make drinks or open doors.  
 
 ## Features
 * Customizable Knock Patterns: Program your own unique knock sequences for personalized interaction.  
