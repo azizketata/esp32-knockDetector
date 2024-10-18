@@ -93,39 +93,34 @@ mqttBroker = "192.168.0.103"  # Replace with your broker's IP address
 mqttPort = 1900
 ```
 ### Running the Aggregator
-Use the provided startupAggregator.sh script to run the aggregator:
+Use the provided startupAggregator.sh script to run the aggregator:  
 
-bash
-Copy code
+```bash
 ./startupAggregator.sh
-This script starts the Flask application on port 5050, accessible from any host (0.0.0.0).
-
-
+```
+* This script starts the Flask application on port 5050, accessible from any host (0.0.0.0).
 ### Deploy the ESP32 Sensor
-
-Power on the ESP32.
+1.Power on the ESP32.
 It will connect to the Wi-Fi network and start detecting knock patterns.
-Interact with the Sensor
-
+### Interact with the Sensor
 Use the programming switch to enter programming mode and set a custom knock pattern.
 Knock on the sensor to test detection and pattern validation.
 ## Employed Technologies
-ESP32 Microcontroller: Provides Wi-Fi connectivity and processing power for sensor data acquisition.  
-Piezoelectric Sensor: Detects vibrations from knocks, converting mechanical stress into electrical signals.  
-MQTT Protocol: Lightweight messaging protocol ideal for IoT applications.  
-Python with Flask and Paho MQTT: Aggregator uses Flask for the REST API and Paho MQTT client to subscribe to MQTT topics.  
-Arduino Framework: Used to program the ESP32 with familiar functions and libraries.  
-Wi-Fi Communication: Allows the sensor to communicate over the network wirelessly.  
-JSON Serialization: Data is serialized into JSON format for easy parsing and integration.  
+* ESP32 Microcontroller: Provides Wi-Fi connectivity and processing power for sensor data acquisition.  
+* Piezoelectric Sensor: Detects vibrations from knocks, converting mechanical stress into electrical signals.  
+* MQTT Protocol: Lightweight messaging protocol ideal for IoT applications.  
+* Python with Flask and Paho MQTT: Aggregator uses Flask for the REST API and Paho MQTT client to subscribe to MQTT topics.  
+* Arduino Framework: Used to program the ESP32 with familiar functions and libraries.  
+* Wi-Fi Communication: Allows the sensor to communicate over the network wirelessly.  
+* JSON Serialization: Data is serialized into JSON format for easy parsing and integration.  
 ## Endpoints
-The aggregator exposes the following RESTful API endpoints:
+* The aggregator exposes the following RESTful API endpoints:
 
 * GET /knocks
-Description: Retrieves data of all knock sequences from all sensors.
+* Description: Retrieves data of all knock sequences from all sensors.
 
-Response: JSON object containing knock data indexed by sensor IDs.
-
-* Example Response:
+* Response: JSON object containing knock data indexed by sensor IDs.  
+ Example Response:
 
 ```json
 {
