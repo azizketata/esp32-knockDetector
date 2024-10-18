@@ -7,42 +7,42 @@ Knock pattern detection offers an intuitive and interactive way to control devic
 The detected knock sequences are sent via MQTT to a broker (Mosquitto). An aggregator, written in Python using the Paho MQTT client and Flask, collects this data and exposes it through a RESTful API. This allows for seamless integration with other systems and applications that can consume the knock data and validation results.  
 
 ## Features
-Customizable Knock Patterns: Program your own unique knock sequences for personalized interaction.  
-Real-time Data Transmission: Sends knock data and validation results over MQTT for immediate processing.  
-RESTful API Access: Aggregated data is accessible via a REST API for integration with other applications.  
-Visual Feedback: LEDs provide on-site visual indicators of system status and knock detection.  
-Multiple Sensor Support: Deploy multiple knock sensors within the network, each with unique IDs.  
-Wi-Fi Connectivity: ESP32 connects to a Wi-Fi network for wireless communication.  
+* Customizable Knock Patterns: Program your own unique knock sequences for personalized interaction.  
+* Real-time Data Transmission: Sends knock data and validation results over MQTT for immediate processing.  
+* RESTful API Access: Aggregated data is accessible via a REST API for integration with other applications.  
+* Visual Feedback: LEDs provide on-site visual indicators of system status and knock detection.  
+* Multiple Sensor Support: Deploy multiple knock sensors within the network, each with unique IDs.  
+* Wi-Fi Connectivity: ESP32 connects to a Wi-Fi network for wireless communication.  
 
 ## Technical Section
 ### Bill of Materials
--ESP32 Development Board (e.g., AZDelivery ESP32 Dev Kit V4)  
-Piezoelectric Sensor  
-1MΩ Resistor (pulldown resistor for the piezo sensor)  
-Push-button or Switch (for entering programming mode)  
-Red LED  
-Green LED  
-Resistors (e.g., 220Ω) for current limiting with LEDs  
-Breadboard and Jumper Wires  
-USB Cable (for programming the ESP32)  
-Computer (with PlatformIO or Arduino IDE)  
-Wi-Fi Network  
-## Hardware Setup & Wiring
+* ESP32 Development Board (e.g., AZDelivery ESP32 Dev Kit V4)  
+* Piezoelectric Sensor  
+* 1MΩ Resistor (pulldown resistor for the piezo sensor)  
+* Push-button or Switch (for entering programming mode)  
+* Red LED  
+* Green LED  
+* Resistors (e.g., 220Ω) for current limiting with LEDs  
+* Breadboard and Jumper Wires  
+* USB Cable (for programming the ESP32)  
+* Computer (with PlatformIO or Arduino IDE)  
+* Wi-Fi Network  
+## Hardware Setup & Wiring (fritzing sketch coming soon) 
 ### Piezo Sensor Setup
 Connect one lead of the piezo sensor to GPIO36 (ADC1_CH0) on the ESP32.
 Connect the other lead to GND.
 Place a 1MΩ pulldown resistor between GPIO36 and GND to stabilize the sensor readings.
 ### Programming Mode Switch
-Connect one terminal of the push-button or switch to GPIO21.
-Connect the other terminal to GND.
-The switch uses the internal pull-up resistor, so when pressed (LOW), it enters programming mode.
+* Connect one terminal of the push-button or switch to GPIO21.
+* Connect the other terminal to GND.
+* The switch uses the internal pull-up resistor, so when pressed (LOW), it enters programming mode.
 ### LED Indicators
 #### Red LED:
-Connect the anode (longer leg) to GPIO16 via a current-limiting resistor (e.g., 220Ω).
-Connect the cathode (shorter leg) to GND.
+* Connect the anode (longer leg) to GPIO16 via a current-limiting resistor (e.g., 220Ω).
+* Connect the cathode (shorter leg) to GND.
 #### Green LED:
-Connect the anode to GPIO17 via a current-limiting resistor.
-Connect the cathode to GND.
+* Connect the anode to GPIO17 via a current-limiting resistor.
+* Connect the cathode to GND.
 ## Software Setup - Sensor
 ### Prerequisites
 PlatformIO installed in Visual Studio Code, or Arduino IDE with ESP32 support.
@@ -51,16 +51,13 @@ ESP32 Board Definitions installed in your development environment.
 PubSubClient library (for MQTT communication)
 ArduinoJson library (for JSON serialization)
 ### Configuration
-Open the knock.cpp file in your development environment.
-
-Update the Wi-Fi credentials:
-
-cpp
-Copy code
+1.Open the knock.cpp file in your development environment.  
+2.Update the Wi-Fi credentials:  
+```cpp
 const char* ssid = "Your_SSID";
 const char* password = "Your_Password";
 Set the MQTT broker IP address and port:
-
+```
 cpp
 Copy code
 IPAddress mqttBroker(192, 168, 0, 118); // Replace with your broker's IP
