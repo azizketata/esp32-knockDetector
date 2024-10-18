@@ -2,31 +2,31 @@
 ## Demo
 
 ## Description
-Knock pattern detection offers an intuitive and interactive way to control devices or authenticate users. This project utilizes an ESP32 microcontroller connected to a piezoelectric sensor to detect specific knock sequences. Users can program custom knock patterns, which can trigger actions like unlocking a door or activating devices.
+Knock pattern detection offers an intuitive and interactive way to control devices or authenticate users. This project utilizes an ESP32 microcontroller connected to a piezoelectric sensor to detect specific knock sequences. Users can program custom knock patterns, which can trigger actions like unlocking a door or activating devices.  
 
-The detected knock sequences are sent via MQTT to a broker (Mosquitto). An aggregator, written in Python using the Paho MQTT client and Flask, collects this data and exposes it through a RESTful API. This allows for seamless integration with other systems and applications that can consume the knock data and validation results.
+The detected knock sequences are sent via MQTT to a broker (Mosquitto). An aggregator, written in Python using the Paho MQTT client and Flask, collects this data and exposes it through a RESTful API. This allows for seamless integration with other systems and applications that can consume the knock data and validation results.  
 
 ## Features
-Customizable Knock Patterns: Program your own unique knock sequences for personalized interaction.
-Real-time Data Transmission: Sends knock data and validation results over MQTT for immediate processing.
-RESTful API Access: Aggregated data is accessible via a REST API for integration with other applications.
-Visual Feedback: LEDs provide on-site visual indicators of system status and knock detection.
-Multiple Sensor Support: Deploy multiple knock sensors within the network, each with unique IDs.
-Wi-Fi Connectivity: ESP32 connects to a Wi-Fi network for wireless communication.
+Customizable Knock Patterns: Program your own unique knock sequences for personalized interaction.  
+Real-time Data Transmission: Sends knock data and validation results over MQTT for immediate processing.  
+RESTful API Access: Aggregated data is accessible via a REST API for integration with other applications.  
+Visual Feedback: LEDs provide on-site visual indicators of system status and knock detection.  
+Multiple Sensor Support: Deploy multiple knock sensors within the network, each with unique IDs.  
+Wi-Fi Connectivity: ESP32 connects to a Wi-Fi network for wireless communication.  
 
 ## Technical Section
 ### Bill of Materials
-ESP32 Development Board (e.g., AZDelivery ESP32 Dev Kit V4)
-Piezoelectric Sensor
-1MΩ Resistor (pulldown resistor for the piezo sensor)
-Push-button or Switch (for entering programming mode)
-Red LED
-Green LED
-Resistors (e.g., 220Ω) for current limiting with LEDs
-Breadboard and Jumper Wires
-USB Cable (for programming the ESP32)
-Computer (with PlatformIO or Arduino IDE)
-Wi-Fi Network
+-ESP32 Development Board (e.g., AZDelivery ESP32 Dev Kit V4)  
+Piezoelectric Sensor  
+1MΩ Resistor (pulldown resistor for the piezo sensor)  
+Push-button or Switch (for entering programming mode)  
+Red LED  
+Green LED  
+Resistors (e.g., 220Ω) for current limiting with LEDs  
+Breadboard and Jumper Wires  
+USB Cable (for programming the ESP32)  
+Computer (with PlatformIO or Arduino IDE)  
+Wi-Fi Network  
 ## Hardware Setup & Wiring
 ### Piezo Sensor Setup
 Connect one lead of the piezo sensor to GPIO36 (ADC1_CH0) on the ESP32.
