@@ -5,7 +5,7 @@ import threading
 
 app = Flask(__name__)
 
-mqttBroker = "localhost"  # Replace with your broker's IP
+mqttBroker = "192.168.0.103"  # Replace with your broker's actual IP address
 mqttPort = 1900
 
 knockData = {}
