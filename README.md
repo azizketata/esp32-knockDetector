@@ -151,11 +151,11 @@ Knock on the sensor to test detection and pattern validation.
 1.Ensure Normal Mode: Make sure the programming switch is not pressed.  
 2.Perform Knock Pattern: Knock the stored pattern on the sensor.  
 3.Feedback:  
-    Success: Green LED blinks; validation result is sent over MQTT.
-    Failure: Red LED blinks; validation failure is sent over MQTT.
+    Success: Green LED blinks; validation result is sent over MQTT.  
+    Failure: Red LED blinks; validation failure is sent over MQTT.  
 4.Trigger Actions: Upon successful validation, actions like unlocking a door can be triggered.  
 ## Testing
 A test publisher script test_publisher.py is provided to simulate sensor data being sent to the MQTT broker. This can be used to test the aggregator and REST API without the physical hardware.  
-
+##Credits(full list coming soon) 
 
 Note: Ensure all IP addresses, ports, and configuration settings are updated to match your specific environment before deploying the system.  
