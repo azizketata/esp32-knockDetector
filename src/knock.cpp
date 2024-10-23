@@ -1,61 +1,47 @@
 #include <Arduino.h>
 #include <WiFi.h>
-#include <PubSubClient.h>
+#include <HTTPClient.h>
 #include <ArduinoJson.h>
+
 /*
- * This program detects knock patterns
+ * This program detects knock patterns and communicates with a FastAPI server.
  *
  * Hardware connections:
  * - GPIO36 (ADC1_CH0): Piezo sensor (connected to ground with a 1MΩ pulldown resistor)
- * - GPIO2: Programming switch to enter a new code (short this pin to enter programming mode)
+ * - GPIO21: Programming switch to enter a new code (short this pin to enter programming mode)
  * - GPIO16: Red LED indicator
  * - GPIO17: Green LED indicator
  */
 
 // Pin definitions
 const int knockSensorPin = 36;  // Piezo sensor connected to GPIO36 (ADC1_CH0)
-const int programSwitchPin = 21; // Programming mode switch connected to GPIO2
+const int programSwitchPin = 21; // Programming mode switch connected to GPIO21
 const int redLedPin = 16;       // Red LED connected to GPIO16
 const int greenLedPin = 17;     // Green LED connected to GPIO17
 
 // Configuration constants
-const int knockThreshold = 25;          // Minimum signal from the piezo to register as a knock
-const int individualRejectMargin = 25; // Acceptable deviation percentage for individual knocks
-const int averageRejectMargin = 15;    // Acceptable average deviation percentage for the knock sequence
-const int knockFadeTime = 150;         // Milliseconds to allow a knock to fade
+int knockThreshold = 100;          // Minimum signal from the piezo to register as a knock
+int knockFadeTime = 150;         // Milliseconds to allow a knock to fade
 const int maxKnocks = 20;              // Maximum number of knocks to listen for
-const int knockTimeout = 1200;         // Maximum time to wait for a knock sequence
+int defaultKnockTimeout = 1200;  // Default time to wait for a knock sequence
 
 // Variables
-int secretCode[maxKnocks] = {50, 25, 25, 50, 100, 50}; // Initial knock pattern
 int knockTimes[maxKnocks];                             // Array to store knock intervals
 int sensorValue = 0;                                   // Last reading of the knock sensor
 bool isProgrammingMode = false;                        // Flag for programming mode
 
 // WiFi credentials
-const char* ssid = "Your_SSID";
-const char* password = "Your_Password";
+const char* ssid = "Cocktail_Mixer";         // Replace with your SSID
+const char* password = "process_hubby"; // Replace with your Wi-Fi password
 
-// MQTT Broker IP and Port
-IPAddress mqttBroker(192, 168, 0, 118); // Replace with your broker's IP
-const int mqttPort = 1900;
-
-// MQTT Client
-WiFiClient espClient;
-PubSubClient client(espClient);
-
-// Sensor ID
-const char* sensorID = "knock_sensor_1";
+// Server details
+const char* serverName = "http://192.168.0.103:7500"; // Replace with your server's IP and port
 
 // Function Prototypes
 void setupWiFi();
-void mqttCallback(char* topic, byte* payload, unsigned int length);
-void reconnectMQTT();
-void publishKnockSequence(int* knocks, int count);
-void publishValidationResult(bool success);
-void listenToKnocks();
-bool validateKnock();
-void triggerUnlock();
+void listenToKnocks(int timeout);
+void sendKnockSequence(int* knocks, int count, int timeout);
+void updateConfigurations(JsonObject config);
 
 void setup()
 {
@@ -70,20 +56,10 @@ void setup()
 
     // Initialize WiFi
     setupWiFi();
-
-    // Initialize MQTT
-    client.setServer(mqttBroker, mqttPort);
-    client.setCallback(mqttCallback);
 }
 
 void loop()
 {
-    if (!client.connected()) {
-        reconnectMQTT();
-    }
-    client.loop();
-
-
     // Read the knock sensor value
     sensorValue = analogRead(knockSensorPin);
 
@@ -102,10 +78,9 @@ void loop()
     // If the sensor value exceeds the threshold, start listening for the knock pattern
     if (sensorValue >= knockThreshold)
     {
-        listenToKnocks();
+        listenToKnocks(defaultKnockTimeout);
     }
 }
-///////////// wifi logic //////////////////////
 
 // Function to connect to WiFi
 void setupWiFi() {
@@ -121,36 +96,13 @@ void setupWiFi() {
         Serial.print(".");
     }
 
-    Serial.println("WiFi connected");
-    Serial.println("IP address: ");
+    Serial.println("\nWiFi connected");
+    Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
 }
 
-// MQTT callback (not used but required)
-void mqttCallback(char* topic, byte* payload, unsigned int length) {
-    // Handle messages received (if any)
-}
-
-void reconnectMQTT() {
-    // Loop until we're reconnected
-    while (!client.connected()) {
-        Serial.print("Attempting MQTT connection...");
-        // Attempt to connect
-        if (client.connect(sensorID)) {
-            Serial.println("connected");
-        } else {
-            Serial.print("failed, rc=");
-            Serial.print(client.state());
-            Serial.println(" try again in 5 seconds");
-            delay(5000);
-        }
-    }
-}
-
-///////////////// wifi logic ////////////////////////////
-
 // Function to record and process knock sequences
-void listenToKnocks()
+void listenToKnocks(int timeout)
 {
     Serial.println("Listening for knocks...");
 
@@ -173,7 +125,7 @@ void listenToKnocks()
     {
         digitalWrite(redLedPin, HIGH);
     }
-    // loop to register a new knock 
+
     do
     {
         // Listen for the next knock or wait for it to timeout
@@ -203,190 +155,82 @@ void listenToKnocks()
         }
         currentTime = millis();
         // Check if we timed out or ran out of knocks
-    } while ((currentTime - startTime < knockTimeout) && (knockCount < maxKnocks));
+    } while ((currentTime - startTime < timeout) && (knockCount < maxKnocks));
 
-    // We've got our knock recorded; let's see if it's valid
-    if (!isProgrammingMode)
-    { // If we're not in programming mode
-        if (validateKnock())
-        {
-            publishValidationResult(true);
-            triggerUnlock();
-        }
-        else
-        {
-            publishValidationResult(false);
-            Serial.println("Secret knock failed.");
-            digitalWrite(greenLedPin, LOW); // We didn't unlock, blink the red LED as visual feedback
-            for (int i = 0; i < 4; i++)
-            {
-                digitalWrite(redLedPin, HIGH);
-                delay(100);
-                digitalWrite(redLedPin, LOW);
-                delay(100);
-            }
-            digitalWrite(greenLedPin, HIGH);
-        }
-    }
-    else
-    { // If we're in programming mode, we still validate the knock but don't unlock
-        validateKnock();
-        // Blink the green and red LEDs alternately to show that programming is complete
-        Serial.println("New lock stored.");
-        digitalWrite(redLedPin, LOW);
-        digitalWrite(greenLedPin, HIGH);
-        for (int i = 0; i < 3; i++)
-        {
-            delay(100);
-            digitalWrite(redLedPin, HIGH);
-            digitalWrite(greenLedPin, LOW);
-            delay(100);
-            digitalWrite(redLedPin, LOW);
-            digitalWrite(greenLedPin, HIGH);
-        }
-    }
-
-// After recording the knock sequence
-publishKnockSequence(knockTimes, knockCount);
-
+    // After recording the knock sequence, send it to the server
+    sendKnockSequence(knockTimes, knockCount, timeout);
 }
 
-// Function to unlock the door: insert the code for the Nuki web API here.
-void triggerUnlock()
+void sendKnockSequence(int* knocks, int count, int timeout)
 {
-    // for now we just light the LED to signify the door being unlocked
-    Serial.println("Door unlocked!");
-    
-    digitalWrite(greenLedPin, HIGH);
+    if (WiFi.status() == WL_CONNECTED) {
+        HTTPClient http;
+        String serverPath = String(serverName) + "/knock";
 
+        // Build JSON payload
+        StaticJsonDocument<256> doc;
+        doc["timeout"] = timeout;
 
-    // Blink the green LED a few times for more visual feedback
-
-    for (int i = 0; i < 5; i++)
-    {
-        digitalWrite(greenLedPin, LOW);
-        delay(100);
-        digitalWrite(greenLedPin, HIGH);
-        delay(100);
-    }
-}
-
-// Function to validate the recorded knock sequence
-bool validateKnock()
-{
-    int currentKnockCount = 0;
-    int secretKnockCount = 0;
-    int maxInterval = 0; // We use this later to normalize the times
-
-    // Count the number of knocks and find the maximum interval
-    for (int i = 0; i < maxKnocks; i++)
-    {
-        if (knockTimes[i] > 0)
-        {
-            currentKnockCount++;
+        JsonArray knockSequence = doc.createNestedArray("knock_sequence");
+        for (int i = 0; i < count; i++) {
+            knockSequence.add(knocks[i]);
         }
-        if (secretCode[i] > 0)
-        {
-            secretKnockCount++;
-        }
-        if (knockTimes[i] > maxInterval)
-        { // Collect normalization data while looping
-            maxInterval = knockTimes[i];
-        }
-    }
 
-    // If we're recording a new knock, save the info and exit
-    if (isProgrammingMode)
-    {
-        // normalize the times 
-        // maxinterval (upper limit) represents 100 
-        for (int i = 0; i < maxKnocks; i++)
-        { // Normalize the times 
-            secretCode[i] = map(knockTimes[i], 0, maxInterval, 0, 100);
-        }
-        // Flash the lights in the recorded pattern to indicate it's been programmed
-        // visual feedback
-        digitalWrite(greenLedPin, LOW);
-        digitalWrite(redLedPin, LOW);
-        delay(1000);
-        digitalWrite(greenLedPin, HIGH);
-        digitalWrite(redLedPin, HIGH);
-        delay(50);
-        for (int i = 0; i < maxKnocks; i++)
-        {
-            digitalWrite(greenLedPin, LOW);
-            digitalWrite(redLedPin, LOW);
-            // Only turn it on if there's a delay
-            if (secretCode[i] > 0)
-            {
-                delay(map(secretCode[i], 0, 100, 0, maxInterval)); // Expand the time back out to what it was, roughly
-                digitalWrite(greenLedPin, HIGH);
-                digitalWrite(redLedPin, HIGH);
+        String jsonPayload;
+        serializeJson(doc, jsonPayload);
+
+        http.begin(serverPath);
+        http.addHeader("Content-Type", "application/json");
+
+        int httpResponseCode = http.POST(jsonPayload);
+
+        if (httpResponseCode > 0) {
+            String response = http.getString();
+            Serial.println("Response:");
+            Serial.println(response);
+
+            // Handle response
+            StaticJsonDocument<512> responseDoc;
+            DeserializationError error = deserializeJson(responseDoc, response);
+            if (!error) {
+                // Check if there are configuration updates
+                JsonObject config = responseDoc["config"];
+                if (!config.isNull()) {
+                    updateConfigurations(config);
+                }
+
+            } else {
+                Serial.println("Failed to parse response JSON.");
             }
-            delay(50);
+        } else {
+            Serial.print("Error on sending POST: ");
+            Serial.println(httpResponseCode);
         }
-        return false; // We don't unlock the door when we are recording a new knock
+        http.end();
+    } else {
+        Serial.println("WiFi not connected");
     }
-
-    // Check if the number of knocks matches, otherwise already return false
-    if (currentKnockCount != secretKnockCount)
-    {
-        return false;
-    }
-
-    // Compare the relative intervals of our knocks
-    int totalTimeDifference = 0;
-    int timeDifference = 0;
-    for (int i = 0; i < maxKnocks; i++)
-    { // Normalize the times
-        knockTimes[i] = map(knockTimes[i], 0, maxInterval, 0, 100);
-        timeDifference = abs(knockTimes[i] - secretCode[i]);
-        if (timeDifference > individualRejectMargin)
-        { // Individual value too far off
-            return false;
-        }
-        totalTimeDifference += timeDifference;
-    }
-    // Fail if the whole sequence is too inaccurate
-    if ((totalTimeDifference / secretKnockCount) > averageRejectMargin)
-    {
-        return false;
-    }
-    return true;
 }
 
-// builds a JSON object containing a knock sequence, sensor ID, and timestamp, then publishes it to an MQTT topic.
-void publishKnockSequence(int* knocks, int count) {
-    StaticJsonDocument<256> doc;
-    doc["sensor_id"] = sensorID;
-    doc["timestamp"] = millis();
-
-    JsonArray knockSequence = doc.createNestedArray("knock_sequence");
-    for (int i = 0; i < count; i++) {
-        knockSequence.add(knocks[i]);
+void updateConfigurations(JsonObject config) {
+    if (config.containsKey("knockThreshold")) {
+        knockThreshold = config["knockThreshold"];
+        Serial.printf("Updated knockThreshold to %d\n", knockThreshold);
     }
-
-    char payload[256];
-    serializeJson(doc, payload);
-
-    client.publish("knock/sensor/data", payload);
+    if (config.containsKey("knockFadeTime")) {
+        knockFadeTime = config["knockFadeTime"];
+        Serial.printf("Updated knockFadeTime to %d\n", knockFadeTime);
+    }
+    if (config.containsKey("maxKnocks")) {
+        // maxKnocks = config["maxKnocks"];
+        Serial.printf("Updated maxKnocks to %d\n", maxKnocks);
+    }
+    if (config.containsKey("defaultKnockTimeout")) {
+        defaultKnockTimeout = config["defaultKnockTimeout"];
+        Serial.printf("Updated defaultKnockTimeout to %d\n", defaultKnockTimeout);
+    }
+    if (config.containsKey("isProgrammingMode")) {
+        isProgrammingMode = config["isProgrammingMode"];
+        Serial.printf("Updated isProgrammingMode to %s\n", isProgrammingMode ? "true" : "false");
+    }
 }
-//creates a JSON-like string payload that contains a sensor ID, a timestamp, and a validation status
-// (either "success" or "failure"). It then publishes this payload to the MQTT topic knock/sensor/status
-void publishValidationResult(bool success) {
-    StaticJsonDocument<128> doc;
-    doc["sensor_id"] = sensorID;
-    doc["timestamp"] = millis();
-    doc["validation"] = success ? "success" : "failure";
-
-    char payload[128];
-    serializeJson(doc, payload);
-
-    client.publish("knock/sensor/status", payload);
-}
-
-
-
-
-
-
