@@ -1,1 +1,1 @@
-uvicorn main:app --host 192.168.0.103 --port 7500
+uvicorn main:app --host 192.168.0.105 --port 7500

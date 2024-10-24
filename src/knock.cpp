@@ -31,11 +31,11 @@ int sensorValue = 0;                                   // Last reading of the kn
 bool isProgrammingMode = false;                        // Flag for programming mode
 
 // WiFi credentials
-const char* ssid = "Cocktail_Mixer";         // Replace with your SSID
-const char* password = "process_hubby"; // Replace with your Wi-Fi password
+const char* ssid = "Your SS-ID";         // Replace with your SSID
+const char* password = "password"; // Replace with your Wi-Fi password
 
 // Server details
-const char* serverName = "http://192.168.0.103:7500"; // Replace with your server's IP and port
+const char* serverName = "http://192.168.0.105:7500"; // Replace with your server's IP and port
 
 // Function Prototypes
 void setupWiFi();
@@ -220,10 +220,6 @@ void updateConfigurations(JsonObject config) {
     if (config.containsKey("knockFadeTime")) {
         knockFadeTime = config["knockFadeTime"];
         Serial.printf("Updated knockFadeTime to %d\n", knockFadeTime);
-    }
-    if (config.containsKey("maxKnocks")) {
-        // maxKnocks = config["maxKnocks"];
-        Serial.printf("Updated maxKnocks to %d\n", maxKnocks);
     }
     if (config.containsKey("defaultKnockTimeout")) {
         defaultKnockTimeout = config["defaultKnockTimeout"];

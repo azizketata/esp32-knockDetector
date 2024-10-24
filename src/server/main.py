@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import logging
+import json
+import os
 
 app = FastAPI()
 
@@ -12,19 +14,17 @@ logging.basicConfig(level=logging.INFO)
 current_config = {
     "knockThreshold": 100,
     "knockFadeTime": 150,
-    "maxKnocks": 20,
     "defaultKnockTimeout": 1200,
     "isProgrammingMode": False
 }
 
+
+
+
 # Stores the latest knock data from the ESP32
 latest_knock_data = None
-
-#just for testing Store predefined knock patterns
-knock_patterns = [
-    {"id": 1, "pattern": [50, 30, 450]},
-    {"id": 2, "pattern": [60, 40, 500]}
-]
+# file path where to store the knock patterns
+PATTERNS_FILE = 'knock_patterns.json'
 
 class KnockData(BaseModel):
     timeout: int
@@ -33,7 +33,6 @@ class KnockData(BaseModel):
 class ConfigData(BaseModel):
     knockThreshold: Optional[int] = Field(None, ge=0)
     knockFadeTime: Optional[int] = Field(None, ge=0)
-    maxKnocks: Optional[int] = Field(None, ge=1)
     defaultKnockTimeout: Optional[int] = Field(None, ge=0)
     isProgrammingMode: Optional[bool] = None
 
@@ -45,6 +44,26 @@ class CompareKnocksInput(BaseModel):
 class KnockPattern(BaseModel):
     id: int
     pattern: List[int]
+    
+def load_patterns():
+    if os.path.exists(PATTERNS_FILE):
+        with open(PATTERNS_FILE, 'r') as f:
+            return json.load(f)
+    else:
+        # Just for testing: Store predefined knock patterns
+        initial_patterns = [
+            {"id": 1, "pattern": [50, 30, 450]},
+            {"id": 2, "pattern": [60, 40, 500]}
+        ]
+        with open(PATTERNS_FILE, 'w') as f:
+            json.dump(initial_patterns, f)
+        return initial_patterns
+
+def save_patterns():
+    with open(PATTERNS_FILE, 'w') as f:
+        json.dump(knock_patterns, f)
+
+knock_patterns = load_patterns()
 
 @app.post("/knock")
 def handle_knock(data: KnockData):
@@ -110,4 +129,5 @@ def add_pattern(pattern: KnockPattern):
         if p["id"] == pattern.id:
             return {"message": "Pattern ID already exists"}
     knock_patterns.append(pattern.dict())
+    save_patterns()
     return {"message": "Pattern added", "pattern": pattern.dict()}
